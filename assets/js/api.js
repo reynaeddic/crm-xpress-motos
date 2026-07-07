@@ -1,6 +1,6 @@
 // 1) Publica tu Apps Script como Web App.
 // 2) Pega aquí la URL que termina en /exec.
-const API_URL = 'PEGA_AQUI_TU_URL_DE_APPS_SCRIPT_EXEC';
+const API_URL = 'https://script.google.com/macros/s/AKfycbykAtrcA1J0kS_CHbWQDz6Y5FBvBWDrblAmeCSQmOjiHqKkh5KNROFDhvBGungj38eF/exec';
 const ADMIN_TOKEN = 'XPRESS-ADMIN-2026';
 
 async function api(action, payload = {}) {
