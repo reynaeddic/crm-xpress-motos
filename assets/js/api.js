@@ -1,6 +1,6 @@
 // 1) Publica tu Apps Script como Web App.
 // 2) Pega aquí la URL que termina en /exec.
-const API_URL = 'https://script.google.com/macros/s/AKfycbykAtrcA1J0kS_CHbWQDz6Y5FBvBWDrblAmeCSQmOjiHqKkh5KNROFDhvBGungj38eF/exec';
+const API_URL = 'https://crm-xpress-api.reynaeddic.workers.dev/';
 const ADMIN_TOKEN = 'XPRESS-ADMIN-2026';
 
 async function api(action, payload = {}) {
