@@ -1,15 +1,35 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>Xpress Motos</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CRM Xpress Motos</title>
+  <meta name="theme-color" content="#24305E" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="stylesheet" href="/assets/css/styles.css" />
 </head>
+<body>
+  <div class="landing">
+    <div class="landing-card">
+      <div class="logo-row">
+        <div class="xm-logo">XM</div>
+        <div>
+          <h1>CRM Xpress Motos</h1>
+          <p>Selecciona tu acceso</p>
+        </div>
+      </div>
 
-<body style="font-family:Arial;text-align:center;margin-top:100px">
+      <div class="landing-actions">
+        <a class="btn primary" href="/asesor.html">Acceso Asesor</a>
+        <a class="btn secondary" href="/admin.html">Acceso Administrador</a>
+      </div>
 
-<h1>CRM Xpress Motos</h1>
+      <p class="note">Los asesores solo deben usar el acceso de asesor.</p>
+    </div>
+  </div>
 
-<h2>Cloudflare funcionando correctamente 🎉</h2>
-
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  </script>
 </body>
 </html>
