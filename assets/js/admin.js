@@ -280,13 +280,17 @@ async function cargarFacturadasDashboard(){
   const inicio = $('facInicio')?.value ? new Date($('facInicio').value + 'T00:00:00') : null;
   const fin = $('facFin')?.value ? new Date($('facFin').value + 'T23:59:59') : null;
 
-  const filtrados = datos.filter(r => {
-    const d = parseFechaAdmin(r.Fecha);
-    if(!d) return false;
-    if(inicio && d < inicio) return false;
-    if(fin && d > fin) return false;
-    return true;
-  });
+const filtrados = datos.filter(r => {
+  if(!inicio && !fin) return true;
+
+  const d = parseFechaAdmin(r.Fecha);
+  if(!d) return true;
+
+  if(inicio && d < inicio) return false;
+  if(fin && d > fin) return false;
+
+  return true;
+});
 
   const hoy = new Date();
   const hoyStr = hoy.toISOString().slice(0,10);
@@ -333,7 +337,7 @@ async function cargarFacturadasDashboard(){
     </div>
   `).join('');
 
-  const ultimas = filtrados.slice(-20).reverse();
+  const ultimas = filtrados.length ? filtrados.slice(-20).reverse() : datos.slice(-20).reverse();
 
   $('facTabla').innerHTML = ultimas.length ? `
     <table>
