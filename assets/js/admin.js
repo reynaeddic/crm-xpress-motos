@@ -27,17 +27,23 @@ async function initAdmin(){
       <button class="nav active" data-sec="dashboard">Dashboard</button>
       <button class="nav" data-sec="buscar">Buscar Prospectos</button>
       <button class="nav" data-sec="catalogos">Catálogos</button>
+      <button class="nav" data-sec="facturadas">Facturadas</button>
       <button class="nav" data-sec="reportes">Reportes PDF</button>
     </aside>
     <main class="content">
       <section id="sec-dashboard"></section>
       <section id="sec-buscar" class="hidden"></section>
       <section id="sec-catalogos" class="hidden"></section>
+      <section id="sec-facturadas" class="hidden"></section>
       <section id="sec-reportes" class="hidden"></section>
     </main>
   </div>`;
   document.querySelectorAll('.nav').forEach(b=>b.addEventListener('click',()=>showSec(b.dataset.sec,b)));
-  renderDashboard(); renderBuscar(); renderCatalogos(); renderReportes();
+  renderDashboard(); 
+  renderBuscar(); 
+  renderCatalogos(); 
+  renderFacturadas(); 
+  renderReportes();
   try{ await cargarCatalogos(true); await cargarDashboard(); }catch(e){alert(e.message)}
 }
 function showSec(sec,btn){document.querySelectorAll('main section').forEach(s=>s.classList.add('hidden')); $('sec-'+sec).classList.remove('hidden'); document.querySelectorAll('.nav').forEach(n=>n.classList.remove('active')); btn.classList.add('active')}
@@ -241,4 +247,164 @@ function normalizarId(v){
 function renderReportes(){
   $('sec-reportes').innerHTML=topbar('Reportes PDF','Genera reportes para dirección')+`<div class="panel grid"><div><label>Tipo</label><select id="tipoRep"><option>Diario</option><option>Semanal</option><option>Mensual</option><option>Trimestral</option><option>Anual</option></select></div><div><label>Fecha inicial</label><input type="date" id="repIni"></div><div><label>Fecha final</label><input type="date" id="repFin"></div><div style="display:flex;align-items:end"><button class="primary" id="btnPdf">Generar PDF</button></div><div id="repMsg"></div></div>`;
   $('btnPdf').addEventListener('click',async()=>{try{const url=await api('generarReportePDF',{token:ADMIN_TOKEN,tipo:$('tipoRep').value,inicio:$('repIni').value,fin:$('repFin').value});$('repMsg').innerHTML=`<a class="btn secondary" href="${escapeHtml(url)}" target="_blank">Abrir PDF generado</a>`;}catch(e){setMsg('repMsg',e.message,'error');}});
+}
+function renderFacturadas(){
+  $('sec-facturadas').innerHTML =
+    topbar('Dashboard de Facturadas','Control de motos facturadas y entregadas') +
+    `<div class="filters">
+      <div><label>Fecha inicial</label><input type="date" id="facInicio"></div>
+      <div><label>Fecha final</label><input type="date" id="facFin"></div>
+      <button class="primary" id="btnFacFiltro">Aplicar filtro</button>
+    </div>
+
+    <div id="facCards" class="cards"></div>
+
+    <div class="panel">
+      <h2>Ranking de Facturación</h2>
+      <div id="facRankings" class="ranking-grid"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Últimas motos facturadas</h2>
+      <div id="facTabla" class="table-wrap"></div>
+    </div>`;
+
+  $('btnFacFiltro').addEventListener('click', cargarFacturadasDashboard);
+  cargarFacturadasDashboard();
+}
+
+async function cargarFacturadasDashboard(){
+  const rows = await api('getFacturadas', {});
+  const datos = Array.isArray(rows) ? rows : [];
+
+  const inicio = $('facInicio')?.value ? new Date($('facInicio').value + 'T00:00:00') : null;
+  const fin = $('facFin')?.value ? new Date($('facFin').value + 'T23:59:59') : null;
+
+  const filtrados = datos.filter(r => {
+    const d = parseFechaAdmin(r.Fecha);
+    if(!d) return false;
+    if(inicio && d < inicio) return false;
+    if(fin && d > fin) return false;
+    return true;
+  });
+
+  const hoy = new Date();
+  const hoyStr = hoy.toISOString().slice(0,10);
+  const mes = hoy.toISOString().slice(0,7);
+  const anio = hoy.getFullYear().toString();
+
+  const hoyCount = datos.filter(r => fechaISOAdmin(r.Fecha) === hoyStr).length;
+  const mesCount = datos.filter(r => fechaISOAdmin(r.Fecha).startsWith(mes)).length;
+  const anioCount = datos.filter(r => fechaISOAdmin(r.Fecha).startsWith(anio)).length;
+
+  const contado = filtrados.filter(r => String(r['Tipo de venta'] || '').toLowerCase() === 'contado').length;
+  const financiamiento = filtrados.filter(r => String(r['Tipo de venta'] || '').toLowerCase() === 'financiamiento').length;
+
+  $('facCards').innerHTML = `
+    <div class="card"><span>Facturadas hoy</span><strong>${hoyCount}</strong></div>
+    <div class="card"><span>Facturadas mes</span><strong>${mesCount}</strong></div>
+    <div class="card"><span>Facturadas año</span><strong>${anioCount}</strong></div>
+    <div class="card"><span>Rango seleccionado</span><strong>${filtrados.length}</strong></div>
+    <div class="card"><span>Contado</span><strong>${contado}</strong></div>
+    <div class="card"><span>Financiamiento</span><strong>${financiamiento}</strong></div>
+  `;
+
+  const rankings = [
+    ['Agencias', rankingFacturadas(filtrados, 'Agencia')],
+    ['Asesores', rankingFacturadas(filtrados, 'Asesor')],
+    ['Marcas', rankingFacturadas(filtrados, 'Marca')],
+    ['Modelos', rankingFacturadas(filtrados, 'Modelo')],
+    ['Financieras', rankingFacturadas(filtrados, 'Financiera')]
+  ];
+
+  $('facRankings').innerHTML = rankings.map(([titulo, arr]) => `
+    <div class="rank-box">
+      <h3>${titulo}</h3>
+      ${
+        arr.length
+          ? arr.slice(0,6).map(x => `
+            <div class="rank-item">
+              <span>${escapeHtml(x.nombre)}</span>
+              <b>${x.total}</b>
+            </div>
+          `).join('')
+          : '<p class="muted">Sin datos.</p>'
+      }
+    </div>
+  `).join('');
+
+  const ultimas = filtrados.slice(-20).reverse();
+
+  $('facTabla').innerHTML = ultimas.length ? `
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Fecha</th>
+          <th>Cliente</th>
+          <th>Agencia</th>
+          <th>Asesor</th>
+          <th>Marca</th>
+          <th>Modelo</th>
+          <th>Serie</th>
+          <th>Tipo</th>
+          <th>Financiera</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${ultimas.map(r => `
+          <tr>
+            <td>${escapeHtml(r['ID Facturación'] || '')}</td>
+            <td>${escapeHtml(r.Fecha || '')}</td>
+            <td>${escapeHtml(r.Cliente || '')}</td>
+            <td>${escapeHtml(r.Agencia || '')}</td>
+            <td>${escapeHtml(r.Asesor || '')}</td>
+            <td>${escapeHtml(r.Marca || '')}</td>
+            <td>${escapeHtml(r.Modelo || '')}</td>
+            <td>${escapeHtml(r['No. de serie'] || '')}</td>
+            <td>${escapeHtml(r['Tipo de venta'] || '')}</td>
+            <td>${escapeHtml(r.Financiera || '')}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  ` : '<div class="empty-state">No hay motos facturadas en este rango.</div>';
+}
+
+function rankingFacturadas(rows, campo){
+  const conteo = {};
+
+  rows.forEach(r => {
+    const valor = r[campo] || 'Sin dato';
+    conteo[valor] = (conteo[valor] || 0) + 1;
+  });
+
+  return Object.entries(conteo)
+    .map(([nombre,total]) => ({nombre,total}))
+    .sort((a,b) => b.total - a.total);
+}
+
+function parseFechaAdmin(valor){
+  if(!valor) return null;
+
+  if(Object.prototype.toString.call(valor) === '[object Date]') return valor;
+
+  const texto = String(valor).trim();
+
+  if(texto.includes('-')) return new Date(texto + 'T00:00:00');
+
+  if(texto.includes('/')){
+    const p = texto.split('/');
+    if(p.length === 3){
+      return new Date(`${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}T00:00:00`);
+    }
+  }
+
+  return null;
+}
+
+function fechaISOAdmin(valor){
+  const d = parseFechaAdmin(valor);
+  if(!d) return '';
+  return d.toISOString().slice(0,10);
 }
