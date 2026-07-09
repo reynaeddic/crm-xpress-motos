@@ -56,6 +56,8 @@ function renderDashboard(){
 async function cargarDashboard(){
   const f={start:$('fInicio')?.value||'',end:$('fFin')?.value||''};
   const d=await api('getDashboard',{token:ADMIN_TOKEN,filters:f});
+  console.log('FACTURADAS:', rows);
+  alert('Registros facturadas: ' + (Array.isArray(rows) ? rows.length : 'No es arreglo'));
   const k=d.kpis||{};
   $('cards').innerHTML=`<div class="card"><span>Prospectos hoy</span><strong>${k.hoy||0}</strong></div><div class="card"><span>Prospectos mes</span><strong>${k.mes||0}</strong></div><div class="card"><span>Rango seleccionado</span><strong>${k.rango||0}</strong></div><div class="card"><span>Aprobación general</span><strong>${k.aprobacionGeneral||0}%</strong></div>`;
   const fin=Array.isArray(d.financieras)?d.financieras:[];
