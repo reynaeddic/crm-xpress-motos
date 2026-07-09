@@ -1,4 +1,26 @@
-document.addEventListener('DOMContentLoaded', initAdmin);
+const CLAVE_ADMIN = 'XPRESS-ADMIN-2026';
+
+function validarAccesoAdmin(){
+  const clave = prompt('Ingresa la clave de administrador:');
+
+  if(clave !== CLAVE_ADMIN){
+    document.body.innerHTML = `
+      <div style="font-family:Arial;text-align:center;margin-top:120px">
+        <h1>Acceso no autorizado</h1>
+        <p>No tienes permiso para entrar al panel administrativo.</p>
+        <a href="/asesor.html">Ir a captura de prospectos</a>
+      </div>
+    `;
+    return false;
+  }
+
+  return true;
+}
+document.addEventListener('DOMContentLoaded', () => {
+  if(validarAccesoAdmin()){
+    initAdmin();
+  }
+});
 async function initAdmin(){
   $('app').innerHTML = `<div class="layout">
     <aside class="sidebar">${renderBrand('Administrador')}
