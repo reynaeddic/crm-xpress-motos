@@ -46,7 +46,175 @@ async function buscarProspectosAdmin(){
   $('tablaProspectos').innerHTML=`<table><thead><tr><th>ID</th><th>Fecha</th><th>Cliente</th><th>Teléfono</th><th>Agencia</th><th>Asesor</th><th>Modelo</th><th>Estado</th></tr></thead><tbody>${resultados.map(r=>`<tr><td>${escapeHtml(r['ID Prospecto']||'')}</td><td>${escapeHtml(r.Fecha||'')}</td><td>${escapeHtml(r.Cliente||'')}</td><td>${escapeHtml(r['Teléfono']||'')}</td><td>${escapeHtml(r.Agencia||'')}</td><td>${escapeHtml(r.Asesor||'')}</td><td>${escapeHtml(r.Modelo||'')}</td><td>${escapeHtml(r['Estado del prospecto']||'')}</td></tr>`).join('')}</tbody></table>`;
 }
 function renderCatalogos(){
-  $('sec-catalogos').innerHTML=topbar('Catálogos','Se editan directamente en Google Sheets con TRUE/FALSE')+`<div class="panel"><div class="catalog-list"><div class="catalog-card"><strong>Agencias</strong>CATALOGO_AGENCIAS</div><div class="catalog-card"><strong>Asesores</strong>CATALOGO_ASESORES</div><div class="catalog-card"><strong>Motos</strong>CATALOGO_MOTOS</div><div class="catalog-card"><strong>Financieras</strong>CATALOGO_FINANCIERAS</div><div class="catalog-card"><strong>Medios</strong>CATALOGO_MEDIOS</div><div class="catalog-card"><strong>Estados / Motivos</strong>CATALOGO_ESTADOS / CATALOGO_MOTIVOS</div></div></div>`;
+  $('sec-catalogos').innerHTML =
+    topbar('Catálogos Web','Administra agencias, asesores, motos, financieras y medios desde el CRM') +
+    `<div class="panel">
+      <div class="filters">
+        <div>
+          <label>Seleccionar catálogo</label>
+          <select id="catTipo">
+            <option value="agencias">Agencias</option>
+            <option value="asesores">Asesores</option>
+            <option value="motos">Motos</option>
+            <option value="financieras">Financieras</option>
+            <option value="medios">Medios</option>
+            <option value="estados">Estados</option>
+            <option value="motivos">Motivos</option>
+            <option value="tiposVenta">Tipos de venta</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:end">
+          <button class="primary" id="btnCargarCatalogo">Cargar catálogo</button>
+        </div>
+      </div>
+
+      <div id="catForm"></div>
+      <div id="catTabla" class="table-wrap"></div>
+      <div id="catMsg"></div>
+    </div>`;
+
+  $('btnCargarCatalogo').addEventListener('click', cargarCatalogoWeb);
+  $('catTipo').addEventListener('change', cargarCatalogoWeb);
+
+  cargarCatalogoWeb();
+}
+async function cargarCatalogoWeb(){
+  try{
+    setMsg('catMsg','Cargando catálogo...','success');
+
+    const tipo = $('catTipo').value;
+    const data = await api('getCatalogosWeb',{token:ADMIN_TOKEN});
+    const rows = data[tipo] || [];
+
+    renderFormularioCatalogo(tipo);
+    renderTablaCatalogo(tipo, rows);
+
+    setMsg('catMsg','','success');
+  }catch(e){
+    setMsg('catMsg', e.message || e, 'error');
+  }
+}
+
+function renderFormularioCatalogo(tipo){
+  const campos = {
+    agencias:['Agencia'],
+    asesores:['Asesor','Agencia','Correo','Puesto'],
+    motos:['Marca','Modelo','Tipo','Precio Público'],
+    financieras:['Financiera'],
+    medios:['Medio'],
+    estados:['Estado'],
+    motivos:['Motivo'],
+    tiposVenta:['Tipo de venta']
+  };
+
+  const lista = campos[tipo] || [];
+
+  $('catForm').innerHTML = `
+    <div class="section-title">Agregar nuevo registro</div>
+    <div class="grid">
+      ${lista.map(c=>`
+        <div>
+          <label>${escapeHtml(c)}</label>
+          <input id="cat_${normalizarId(c)}" placeholder="${escapeHtml(c)}">
+        </div>
+      `).join('')}
+      <div style="display:flex;align-items:end">
+        <button class="primary" id="btnAgregarCatalogo">Agregar</button>
+      </div>
+    </div>
+  `;
+
+  $('btnAgregarCatalogo').addEventListener('click', agregarRegistroCatalogo);
+}
+
+function renderTablaCatalogo(tipo, rows){
+  if(!rows.length){
+    $('catTabla').innerHTML = '<div class="empty-state">No hay registros en este catálogo.</div>';
+    return;
+  }
+
+  const headers = Object.keys(rows[0]);
+
+  $('catTabla').innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          ${headers.map(h=>`<th>${escapeHtml(h)}</th>`).join('')}
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map((r,i)=>`
+          <tr>
+            ${headers.map(h=>`<td>${escapeHtml(r[h] ?? '')}</td>`).join('')}
+            <td>
+              <button class="secondary" onclick="toggleCatalogo('${tipo}',${i},${!esActivo(r.Activo)})">
+                ${esActivo(r.Activo) ? 'Desactivar' : 'Activar'}
+              </button>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+async function agregarRegistroCatalogo(){
+  try{
+    const tipo = $('catTipo').value;
+
+    const campos = {
+      agencias:['Agencia'],
+      asesores:['Asesor','Agencia','Correo','Puesto'],
+      motos:['Marca','Modelo','Tipo','Precio Público'],
+      financieras:['Financiera'],
+      medios:['Medio'],
+      estados:['Estado'],
+      motivos:['Motivo'],
+      tiposVenta:['Tipo de venta']
+    };
+
+    const data = {};
+
+    (campos[tipo] || []).forEach(c=>{
+      data[c] = $('cat_' + normalizarId(c)).value.trim();
+    });
+
+    await api('agregarCatalogo',{token:ADMIN_TOKEN,tipo,data});
+
+    setMsg('catMsg','Registro agregado correctamente.','success');
+    await cargarCatalogoWeb();
+
+  }catch(e){
+    setMsg('catMsg', e.message || e, 'error');
+  }
+}
+
+async function toggleCatalogo(tipo,rowIndex,activo){
+  try{
+    await api('cambiarEstadoCatalogo',{
+      token:ADMIN_TOKEN,
+      tipo,
+      rowIndex,
+      activo
+    });
+
+    setMsg('catMsg','Estado actualizado correctamente.','success');
+    await cargarCatalogoWeb();
+
+  }catch(e){
+    setMsg('catMsg', e.message || e, 'error');
+  }
+}
+
+function esActivo(v){
+  return v === true || String(v).toUpperCase() === 'TRUE' || String(v).toUpperCase() === 'SÍ' || String(v).toUpperCase() === 'SI';
+}
+
+function normalizarId(v){
+  return String(v)
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-zA-Z0-9]/g,'_');
 }
 function renderReportes(){
   $('sec-reportes').innerHTML=topbar('Reportes PDF','Genera reportes para dirección')+`<div class="panel grid"><div><label>Tipo</label><select id="tipoRep"><option>Diario</option><option>Semanal</option><option>Mensual</option><option>Trimestral</option><option>Anual</option></select></div><div><label>Fecha inicial</label><input type="date" id="repIni"></div><div><label>Fecha final</label><input type="date" id="repFin"></div><div style="display:flex;align-items:end"><button class="primary" id="btnPdf">Generar PDF</button></div><div id="repMsg"></div></div>`;
