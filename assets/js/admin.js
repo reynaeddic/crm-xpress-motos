@@ -274,105 +274,112 @@ function renderFacturadas(){
 }
 
 async function cargarFacturadasDashboard(){
-  const rows = await api('getFacturadas', {});
-  const datos = Array.isArray(rows) ? rows : [];
+  try{
+    const rows = await api('getFacturadas', {});
+    const datos = Array.isArray(rows) ? rows : [];
 
-  const inicio = $('facInicio')?.value ? new Date($('facInicio').value + 'T00:00:00') : null;
-  const fin = $('facFin')?.value ? new Date($('facFin').value + 'T23:59:59') : null;
+    const inicio = $('facInicio')?.value ? new Date($('facInicio').value + 'T00:00:00') : null;
+    const fin = $('facFin')?.value ? new Date($('facFin').value + 'T23:59:59') : null;
 
-const filtrados = datos.filter(r => {
-  if(!inicio && !fin) return true;
+    const filtrados = datos.filter(r => {
+      if(!inicio && !fin) return true;
 
-  const d = parseFechaAdmin(r.Fecha);
-  if(!d) return true;
+      const d = parseFechaAdmin(r.Fecha);
+      if(!d) return true;
 
-  if(inicio && d < inicio) return false;
-  if(fin && d > fin) return false;
+      if(inicio && d < inicio) return false;
+      if(fin && d > fin) return false;
 
-  return true;
-});
+      return true;
+    });
 
-  const hoy = new Date();
-  const hoyStr = hoy.toISOString().slice(0,10);
-  const mes = hoy.toISOString().slice(0,7);
-  const anio = hoy.getFullYear().toString();
+    const hoy = new Date();
+    const hoyStr = hoy.toISOString().slice(0,10);
+    const mes = hoy.toISOString().slice(0,7);
+    const anio = hoy.getFullYear().toString();
 
-  const hoyCount = datos.filter(r => fechaISOAdmin(r.Fecha) === hoyStr).length;
-  const mesCount = datos.filter(r => fechaISOAdmin(r.Fecha).startsWith(mes)).length;
-  const anioCount = datos.filter(r => fechaISOAdmin(r.Fecha).startsWith(anio)).length;
+    const hoyCount = datos.filter(r => fechaISOAdmin(r.Fecha) === hoyStr).length;
+    const mesCount = datos.filter(r => fechaISOAdmin(r.Fecha).startsWith(mes)).length;
+    const anioCount = datos.filter(r => fechaISOAdmin(r.Fecha).startsWith(anio)).length;
 
-  const contado = filtrados.filter(r => String(r['Tipo de venta'] || '').toLowerCase() === 'contado').length;
-  const financiamiento = filtrados.filter(r => String(r['Tipo de venta'] || '').toLowerCase() === 'financiamiento').length;
+    const contado = filtrados.filter(r => String(r['Tipo de venta'] || '').toLowerCase() === 'contado').length;
+    const financiamiento = filtrados.filter(r => String(r['Tipo de venta'] || '').toLowerCase() === 'financiamiento').length;
 
-  $('facCards').innerHTML = `
-    <div class="card"><span>Facturadas hoy</span><strong>${hoyCount}</strong></div>
-    <div class="card"><span>Facturadas mes</span><strong>${mesCount}</strong></div>
-    <div class="card"><span>Facturadas año</span><strong>${anioCount}</strong></div>
-    <div class="card"><span>Rango seleccionado</span><strong>${filtrados.length}</strong></div>
-    <div class="card"><span>Contado</span><strong>${contado}</strong></div>
-    <div class="card"><span>Financiamiento</span><strong>${financiamiento}</strong></div>
-  `;
+    $('facCards').innerHTML = `
+      <div class="card"><span>Facturadas hoy</span><strong>${hoyCount}</strong></div>
+      <div class="card"><span>Facturadas mes</span><strong>${mesCount}</strong></div>
+      <div class="card"><span>Facturadas año</span><strong>${anioCount}</strong></div>
+      <div class="card"><span>Rango seleccionado</span><strong>${filtrados.length}</strong></div>
+      <div class="card"><span>Contado</span><strong>${contado}</strong></div>
+      <div class="card"><span>Financiamiento</span><strong>${financiamiento}</strong></div>
+    `;
 
-  const rankings = [
-    ['Agencias', rankingFacturadas(filtrados, 'Agencia')],
-    ['Asesores', rankingFacturadas(filtrados, 'Asesor')],
-    ['Marcas', rankingFacturadas(filtrados, 'Marca')],
-    ['Modelos', rankingFacturadas(filtrados, 'Modelo')],
-    ['Financieras', rankingFacturadas(filtrados, 'Financiera')]
-  ];
+    const rankings = [
+      ['Agencias', rankingFacturadas(filtrados, 'Agencia')],
+      ['Asesores', rankingFacturadas(filtrados, 'Asesor')],
+      ['Marcas', rankingFacturadas(filtrados, 'Marca')],
+      ['Modelos', rankingFacturadas(filtrados, 'Modelo')],
+      ['Financieras', rankingFacturadas(filtrados, 'Financiera')]
+    ];
 
-  $('facRankings').innerHTML = rankings.map(([titulo, arr]) => `
-    <div class="rank-box">
-      <h3>${titulo}</h3>
-      ${
-        arr.length
-          ? arr.slice(0,6).map(x => `
-            <div class="rank-item">
-              <span>${escapeHtml(x.nombre)}</span>
-              <b>${x.total}</b>
-            </div>
-          `).join('')
-          : '<p class="muted">Sin datos.</p>'
-      }
-    </div>
-  `).join('');
+    $('facRankings').innerHTML = rankings.map(([titulo, arr]) => `
+      <div class="rank-box">
+        <h3>${titulo}</h3>
+        ${
+          arr.length
+            ? arr.slice(0,6).map(x => `
+              <div class="rank-item">
+                <span>${escapeHtml(x.nombre)}</span>
+                <b>${x.total}</b>
+              </div>
+            `).join('')
+            : '<p class="muted">Sin datos.</p>'
+        }
+      </div>
+    `).join('');
 
-  const ultimas = filtrados.length ? filtrados.slice(-20).reverse() : datos.slice(-20).reverse();
+    const ultimas = filtrados.slice(-20).reverse();
 
-  $('facTabla').innerHTML = ultimas.length ? `
-    <table>
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Fecha</th>
-          <th>Cliente</th>
-          <th>Agencia</th>
-          <th>Asesor</th>
-          <th>Marca</th>
-          <th>Modelo</th>
-          <th>Serie</th>
-          <th>Tipo</th>
-          <th>Financiera</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${ultimas.map(r => `
+    $('facTabla').innerHTML = ultimas.length ? `
+      <table>
+        <thead>
           <tr>
-            <td>${escapeHtml(r['ID Facturación'] || '')}</td>
-            <td>${escapeHtml(r.Fecha || '')}</td>
-            <td>${escapeHtml(r.Cliente || '')}</td>
-            <td>${escapeHtml(r.Agencia || '')}</td>
-            <td>${escapeHtml(r.Asesor || '')}</td>
-            <td>${escapeHtml(r.Marca || '')}</td>
-            <td>${escapeHtml(r.Modelo || '')}</td>
-            <td>${escapeHtml(r['No. de serie'] || '')}</td>
-            <td>${escapeHtml(r['Tipo de venta'] || '')}</td>
-            <td>${escapeHtml(r.Financiera || '')}</td>
+            <th>ID</th>
+            <th>Fecha</th>
+            <th>Cliente</th>
+            <th>Agencia</th>
+            <th>Asesor</th>
+            <th>Marca</th>
+            <th>Modelo</th>
+            <th>Serie</th>
+            <th>Tipo</th>
+            <th>Financiera</th>
           </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  ` : '<div class="empty-state">No hay motos facturadas en este rango.</div>';
+        </thead>
+        <tbody>
+          ${ultimas.map(r => `
+            <tr>
+              <td>${escapeHtml(r['ID Facturación'] || '')}</td>
+              <td>${escapeHtml(r.Fecha || '')}</td>
+              <td>${escapeHtml(r.Cliente || '')}</td>
+              <td>${escapeHtml(r.Agencia || '')}</td>
+              <td>${escapeHtml(r.Asesor || '')}</td>
+              <td>${escapeHtml(r.Marca || '')}</td>
+              <td>${escapeHtml(r.Modelo || '')}</td>
+              <td>${escapeHtml(r['No. de serie'] || '')}</td>
+              <td>${escapeHtml(r['Tipo de venta'] || '')}</td>
+              <td>${escapeHtml(r.Financiera || '')}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    ` : '<div class="empty-state">No hay motos facturadas registradas.</div>';
+
+  }catch(e){
+    $('facCards').innerHTML = '';
+    $('facRankings').innerHTML = '';
+    $('facTabla').innerHTML = `<div class="error">Error al cargar facturadas: ${escapeHtml(e.message || e)}</div>`;
+  }
 }
 
 function rankingFacturadas(rows, campo){
