@@ -252,10 +252,26 @@ function renderFacturadas(){
   $('sec-facturadas').innerHTML =
     topbar('Dashboard de Facturadas','Control de motos facturadas y entregadas') +
     `<div class="filters">
-      <div><label>Fecha inicial</label><input type="date" id="facInicio"></div>
-      <div><label>Fecha final</label><input type="date" id="facFin"></div>
-      <button class="primary" id="btnFacFiltro">Aplicar filtro</button>
-    </div>
+      <div>
+       <label>Fecha inicial</label>
+       <input type="date" id="facInicio">
+  </div>
+
+  <div>
+    <label>Fecha final</label>
+    <input type="date" id="facFin">
+  </div>
+
+  <button class="primary" id="btnFacFiltro">
+    Aplicar filtro
+  </button>
+
+  <button class="secondary" id="btnFacPdf">
+    Generar PDF
+  </button>
+</div>
+
+<div id="facPdfMsg"></div>
 
     <div id="facCards" class="cards"></div>
 
@@ -270,6 +286,7 @@ function renderFacturadas(){
     </div>`;
 
   $('btnFacFiltro').addEventListener('click', cargarFacturadasDashboard);
+  $('btnFacPdf').addEventListener('click', generarPDFDeFacturadas);
   cargarFacturadasDashboard();
 }
 
@@ -448,4 +465,31 @@ function fechaISOAdmin(valor){
   const day = String(d.getDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
+}
+async function generarPDFDeFacturadas(){
+  const btn = $('btnFacPdf');
+
+  try{
+    btn.disabled = true;
+    btn.textContent = 'Generando PDF...';
+
+    setMsg('facPdfMsg','Generando reporte, por favor espera...','success');
+
+    const url = await api('generarReporteFacturadasPDF',{
+      token: ADMIN_TOKEN,
+      inicio: $('facInicio')?.value || '',
+      fin: $('facFin')?.value || ''
+    });
+
+    $('facPdfMsg').innerHTML = `
+      <a class="btn secondary" href="${escapeHtml(url)}" target="_blank">
+        Abrir PDF generado
+      </a>
+    `;
+  }catch(e){
+    setMsg('facPdfMsg', e.message || e, 'error');
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'Generar PDF';
+  }
 }
