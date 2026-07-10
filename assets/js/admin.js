@@ -398,24 +398,54 @@ function rankingFacturadas(rows, campo){
 function parseFechaAdmin(valor){
   if(!valor) return null;
 
-  if(Object.prototype.toString.call(valor) === '[object Date]') return valor;
+  if(valor instanceof Date){
+    return isNaN(valor.getTime()) ? null : valor;
+  }
 
   const texto = String(valor).trim();
 
-  if(texto.includes('-')) return new Date(texto + 'T00:00:00');
+  // Formato yyyy-MM-dd
+  const isoSimple = texto.match(/^(\d{4})-(\d{2})-(\d{2})$/);
 
-  if(texto.includes('/')){
-    const p = texto.split('/');
-    if(p.length === 3){
-      return new Date(`${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}T00:00:00`);
-    }
+  if(isoSimple){
+    const d = new Date(
+      Number(isoSimple[1]),
+      Number(isoSimple[2]) - 1,
+      Number(isoSimple[3])
+    );
+
+    return isNaN(d.getTime()) ? null : d;
   }
 
-  return null;
+  // Formato dd/MM/yyyy
+  const fechaLatina = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+
+  if(fechaLatina){
+    const d = new Date(
+      Number(fechaLatina[3]),
+      Number(fechaLatina[2]) - 1,
+      Number(fechaLatina[1])
+    );
+
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // Fechas completas enviadas por Google Sheets:
+  // 2026-07-09T06:00:00.000Z
+  // Wed Jul 09 2026...
+  const d = new Date(texto);
+
+  return isNaN(d.getTime()) ? null : d;
 }
 
 function fechaISOAdmin(valor){
   const d = parseFechaAdmin(valor);
+
   if(!d) return '';
-  return d.toISOString().slice(0,10);
+
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
 }
